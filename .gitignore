@@ -1,0 +1,19 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+target/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Editor and system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
