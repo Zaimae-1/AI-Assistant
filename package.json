@@ -1,0 +1,29 @@
+{
+  "name": "jarvis",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/desktop/frontend",
+    "services/backend",
+    "core/protocol"
+  ],
+  "scripts": {
+    "dev:desktop": "npm run dev -w @jarvis/desktop",
+    "dev:tauri": "cd apps/desktop && npm exec -- tauri dev",
+    "dev:backend": "node --watch --env-file-if-exists=.env --import tsx services/backend/src/server.ts",
+    "build": "npm run build -w @jarvis/backend && npm run build -w @jarvis/desktop",
+    "typecheck": "npm run typecheck -w @jarvis/backend && npm run typecheck -w @jarvis/desktop",
+    "lint": "eslint apps/desktop/frontend/src services/backend/src tests/contract",
+    "format:check": "prettier --check package.json eslint.config.mjs apps/desktop/frontend services/backend/src services/backend/package.json services/backend/tsconfig.json core/protocol/package.json tests/contract",
+    "format": "prettier --write package.json eslint.config.mjs apps/desktop/frontend services/backend/src services/backend/package.json services/backend/tsconfig.json core/protocol/package.json tests/contract",
+    "test": "npm run test -w @jarvis/protocol && npm run test -w @jarvis/backend"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.12.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

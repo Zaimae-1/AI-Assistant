@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/jarvis-core"]
+resolver = "2"

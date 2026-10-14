@@ -8,9 +8,11 @@ node_modules/
 dist/
 build/
 target/
+.gradle/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+*.iml
 
 # Editor and system files
 .idea/

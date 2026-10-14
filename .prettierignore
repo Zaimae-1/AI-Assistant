@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+target
+apps/mobile
+package-lock.json
+core/protocol/package-lock.json

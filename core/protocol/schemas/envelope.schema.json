@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/protocol/v1/envelope.schema.json",
+  "title": "Jarvis Protocol v1.0 envelope",
+  "type": "object",
+  "required": ["protocol_version", "message_id", "correlation_id", "sent_at", "source", "type", "payload"],
+  "properties": {
+    "protocol_version": { "const": "1.0" },
+    "message_id": { "$ref": "#/$defs/id" },
+    "correlation_id": { "$ref": "#/$defs/id" },
+    "sent_at": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["desktop", "mobile", "backend", "orchestrator", "local_agent"] },
+        "id": { "$ref": "#/$defs/id" }
+      },
+      "additionalProperties": false
+    },
+    "type": { "type": "string" },
+    "task_id": { "$ref": "#/$defs/id" },
+    "idempotency_key": { "type": "string", "minLength": 16, "maxLength": 128 },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "properties": {
+        "type": { "const": "message.created" },
+        "payload": { "$ref": "#/$defs/message" }
+      },
+      "required": ["type"]
+    },
+    {
+      "properties": {
+        "type": { "const": "task.updated" },
+        "payload": { "$ref": "#/$defs/task" }
+      },
+      "required": ["type", "task_id"]
+    },
+    {
+      "properties": {
+        "type": { "const": "permission.requested" },
+        "payload": { "$ref": "#/$defs/permissionRequest" }
+      },
+      "required": ["type", "task_id"]
+    },
+    {
+      "properties": {
+        "type": { "const": "permission.decided" },
+        "payload": { "$ref": "#/$defs/permissionDecision" }
+      },
+      "required": ["type", "task_id"]
+    },
+    {
+      "properties": {
+        "type": { "const": "device.command.requested" },
+        "payload": { "$ref": "#/$defs/deviceCommand" }
+      },
+      "required": ["type", "task_id", "idempotency_key"]
+    },
+    {
+      "properties": {
+        "type": { "const": "device.command.result" },
+        "payload": { "$ref": "#/$defs/deviceResult" }
+      },
+      "required": ["type", "task_id"]
+    }
+  ],
+  "$defs": {
+    "id": { "type": "string", "format": "uuid" },
+    "message": {
+      "type": "object",
+      "required": ["conversation_id", "sender", "content"],
+      "properties": {
+        "conversation_id": { "$ref": "#/$defs/id" },
+        "sender": {
+          "type": "object",
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "enum": ["user", "agent", "system"] },
+            "id": { "$ref": "#/$defs/id" }
+          },
+          "additionalProperties": false
+        },
+        "content": { "type": "string", "minLength": 1, "maxLength": 100000 },
+        "reply_to_message_id": { "$ref": "#/$defs/id" },
+        "target_agent_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "task": {
+      "type": "object",
+      "required": ["task_id", "state", "attempt"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/id" },
+        "state": { "enum": ["proposed", "awaiting_approval", "queued", "running", "succeeded", "failed", "cancelled"] },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "error_code": { "type": "string", "maxLength": 80 }
+      }
+    },
+    "permissionRequest": {
+      "type": "object",
+      "required": ["request_id", "device_id", "capability", "resource", "risk", "expires_at"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "device_id": { "$ref": "#/$defs/id" },
+        "capability": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "resource": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "risk": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "expires_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "permissionDecision": {
+      "type": "object",
+      "required": ["request_id", "decision", "approver_user_id", "nonce", "expires_at"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "decision": { "enum": ["allow_once", "deny"] },
+        "approver_user_id": { "$ref": "#/$defs/id" },
+        "nonce": { "type": "string", "minLength": 16, "maxLength": 128 },
+        "expires_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "deviceCommand": {
+      "type": "object",
+      "required": ["command_id", "device_id", "project_id", "project_root", "capability", "arguments", "expires_at"],
+      "properties": {
+        "command_id": { "$ref": "#/$defs/id" },
+        "device_id": { "$ref": "#/$defs/id" },
+        "project_id": { "$ref": "#/$defs/id" },
+        "project_root": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "capability": { "enum": ["git.status", "git.diff", "test.run"] },
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "test_profile_id": { "type": "string", "minLength": 1, "maxLength": 80 }
+          },
+          "additionalProperties": false
+        },
+        "permission_request_id": { "$ref": "#/$defs/id" },
+        "expires_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "capability": { "const": "test.run" } } },
+          "then": {
+            "properties": {
+              "arguments": { "type": "object", "required": ["test_profile_id"], "maxProperties": 1 }
+            },
+            "required": ["permission_request_id"]
+          }
+        },
+        {
+          "if": { "properties": { "capability": { "enum": ["git.status", "git.diff"] } } },
+          "then": {
+            "properties": {
+              "arguments": { "type": "object", "maxProperties": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "deviceResult": {
+      "type": "object",
+      "required": ["command_id", "status"],
+      "properties": {
+        "command_id": { "$ref": "#/$defs/id" },
+        "status": { "enum": ["succeeded", "failed", "cancelled"] },
+        "output": { "type": "string", "maxLength": 100000 },
+        "error_code": { "type": "string", "maxLength": 80 }
+      }
+    }
+  }
+}

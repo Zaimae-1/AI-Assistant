@@ -1,0 +1,13 @@
+{
+  "name": "@jarvis/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Versioned Jarvis wire contracts",
+  "scripts": {
+    "test": "node --test ../../tests/contract/*.test.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}
