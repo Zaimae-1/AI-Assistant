@@ -501,6 +501,87 @@ test("AI provider tool loop stores response and usage without automatic memory",
   }
 });
 
+test("provider credit failure is clear and never saves an assistant reply", async () => {
+  const unavailable: AIProvider = {
+    name: "fake",
+    async generate() {
+      throw Object.assign(new Error("private provider details"), {
+        status: 429,
+        code: "credit_balance_exhausted",
+      });
+    },
+    async stream() {
+      throw Object.assign(new Error("private provider details"), {
+        status: 429,
+        code: "credit_balance_exhausted",
+      });
+    },
+  };
+  const h = await harness(unavailable);
+  try {
+    const user = await h.register("quota@example.test");
+    const agent = (
+      await h.api(
+        "/v1/agents",
+        "POST",
+        { name: "Tutor", role: "learning" },
+        user.token,
+      )
+    ).body;
+    const conversation = (
+      await h.api(
+        "/v1/conversations",
+        "POST",
+        { title: "Study", agent_id: agent.id },
+        user.token,
+      )
+    ).body;
+    await h.api(
+      `/v1/conversations/${conversation.id}/messages`,
+      "POST",
+      { content: "Hello" },
+      user.token,
+    );
+    const ordinary = await h.api(
+      `/v1/conversations/${conversation.id}/respond`,
+      "POST",
+      { stream: false },
+      user.token,
+    );
+    assert.equal(ordinary.status, 429);
+    assert.equal(ordinary.body.error, "provider_quota_exhausted");
+    assert.ok(
+      !JSON.stringify(ordinary.body).includes("private provider details"),
+    );
+    const streamed = await fetch(
+      `${h.base}/v1/conversations/${conversation.id}/respond`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${user.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ stream: true }),
+      },
+    );
+    assert.equal(streamed.status, 200);
+    assert.match(await streamed.text(), /provider_quota_exhausted/);
+    assert.equal(
+      (
+        await h.api(
+          `/v1/conversations/${conversation.id}/messages`,
+          "GET",
+          undefined,
+          user.token,
+        )
+      ).body.length,
+      1,
+    );
+  } finally {
+    await h.close();
+  }
+});
+
 test("streamed response includes deltas and opted-in memory, while expired memory is hidden", async () => {
   const provider = new FakeProvider();
   const h = await harness(provider);

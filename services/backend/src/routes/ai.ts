@@ -3,7 +3,7 @@ import { z } from "zod";
 import { estimateCostMicros, selectModel } from "../ai/models.js";
 import type { ProviderItem } from "../ai/provider.js";
 import { runAgent } from "../ai/runtime.js";
-import { HttpError, assertFound } from "../errors.js";
+import { HttpError, assertFound, providerFailure } from "../errors.js";
 import { sendJson, type Router } from "../http.js";
 import { ownedAgent } from "./agents.js";
 import { ownedConversation } from "./conversations.js";
@@ -260,6 +260,7 @@ export function registerAIRoutes(router: Router): void {
         sendJson(context.response, 200, payload);
       }
     } catch (error) {
+      const failure = providerFailure(error);
       context.store.run(
         "UPDATE agents SET status='failed',updated_at=? WHERE id=? AND user_id=?",
         new Date().toISOString(),
@@ -276,11 +277,11 @@ export function registerAIRoutes(router: Router): void {
       );
       if (input.stream) {
         context.response.write(
-          `event: error\ndata: ${JSON.stringify({ error: "generation_failed" })}\n\n`,
+          `event: error\ndata: ${JSON.stringify({ error: failure.code, message: failure.message })}\n\n`,
         );
         context.response.end();
       } else {
-        throw error;
+        throw failure;
       }
     } finally {
       busy.delete(conversation.id);

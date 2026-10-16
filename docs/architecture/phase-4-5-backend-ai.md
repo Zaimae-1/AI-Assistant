@@ -27,6 +27,6 @@ Semua endpoint `/v1` selain register dan login membutuhkan header `Authorization
 - Registrasi perangkat saat ini hanya mencatat perangkat dari sesi pengguna. Pairing kriptografis dan pemeriksaan izin oleh agent lokal perlu dibuat pada fase agent perangkat. Tidak ada operasi file, Git, test runner, atau pengiriman keluar yang dijalankan AI di backend.
 - Workflow hanya dapat menjalankan dua tool aman di atas. Perpindahan tugas lintas agent sudah ditegakkan di backend, tetapi orkestrasi percakapan otomatis antar agent belum tersedia.
 - Streaming event belum menyediakan pemutaran ulang saat koneksi putus. Model Router v1 memakai aturan sederhana, tanpa pengukuran kualitas. Biaya hanya estimasi bila tarif diisi, bukan tagihan resmi.
-- Tes otomatis memakai provider tiruan agar tidak memakai biaya. Uji langsung OpenAI baru bisa dilakukan sesudah `OPENAI_API_KEY` dipasang di `.env` lokal.
+- Tes otomatis memakai provider tiruan agar tidak memakai biaya. Pada 16 Oktober 2026, `OPENAI_API_KEY` sudah terpasang di `.env` lokal dan permintaan langsung mencapai API OpenAI, tetapi ditolak dengan HTTP 429 `credit_balance_exhausted`. Akun API perlu kredit tersedia sebelum respons model dapat diuji. Backend sekarang memetakan kondisi ini ke error `provider_quota_exhausted` tanpa menyimpan jawaban asisten parsial. Jangan ulangi panggilan sampai saldo API tersedia.
 
 Checklist Notion sebaiknya diberi centang hanya untuk komponen yang telah diimplementasikan dan lolos tes, bukan untuk alur end-to-end yang masih memerlukan aplikasi klien atau agent lokal.
