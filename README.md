@@ -30,6 +30,8 @@ npm run build
 
 `dev:desktop` membuka UI melalui Vite. Setelah Rust tersedia, `npm run dev:tauri` menjalankan aplikasi desktop native. Untuk mobile, jalankan `flutter run` dari `apps/mobile/` dengan perangkat atau emulator Android.
 
+`npm run build:tauri` memeriksa build aplikasi Windows tanpa membuat installer. Ikon sumber desktop berada di `apps/desktop/app-icon.svg`.
+
 Salin `.env.example` ke `.env` untuk konfigurasi lokal. `.env` diabaikan Git; jangan simpan secret di file contoh, kode, atau commit. Backend awal hanya membuka `GET /health` pada `127.0.0.1:3001`; belum ada akun atau fungsi AI.
 
 Status: Phase 0–2 adalah desain awal. Phase 0 belum final sampai wawancara pengguna dan keputusan produk selesai. Phase 3 sudah memiliki kerangka repo dan tes dasar; fungsi produk pada fase berikutnya belum dibangun.

@@ -10,6 +10,7 @@
   "scripts": {
     "dev:desktop": "npm run dev -w @jarvis/desktop",
     "dev:tauri": "cd apps/desktop && npm exec -- tauri dev",
+    "build:tauri": "cd apps/desktop && npm exec -- tauri build --debug --no-bundle --ci",
     "dev:backend": "node --watch --env-file-if-exists=.env --import tsx services/backend/src/server.ts",
     "build": "npm run build -w @jarvis/backend && npm run build -w @jarvis/desktop",
     "typecheck": "npm run typecheck -w @jarvis/backend && npm run typecheck -w @jarvis/desktop",

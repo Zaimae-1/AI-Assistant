@@ -14,4 +14,6 @@ Sumber struktur: [Struktur Project — Jarvis](https://app.notion.com/p/3ec499df
 
 ## Batas setup
 
-Domain, izin, command agent, integrasi AI, autentikasi, dan fitur aplikasi belum diimplementasikan. Folder kosong yang mengikuti peta Notion tidak berarti fitur tersebut sudah selesai. Tauri native perlu Rust toolchain dan validasi build terpisah.
+Domain, izin, command agent, integrasi AI, autentikasi, dan fitur aplikasi belum diimplementasikan. Folder kosong yang mengikuti peta Notion tidak berarti fitur tersebut sudah selesai.
+
+Pada 16 Oktober 2026, build desktop Tauri di Windows berhasil dijalankan dengan `npm run build:tauri`. Hasilnya adalah program debug lokal; installer dan fungsi produk belum dibuat.
