@@ -32,6 +32,21 @@ npm run build
 
 `npm run build:tauri` memeriksa build aplikasi Windows tanpa membuat installer. Ikon sumber desktop berada di `apps/desktop/app-icon.svg`.
 
-Salin `.env.example` ke `.env` untuk konfigurasi lokal. `.env` diabaikan Git; jangan simpan secret di file contoh, kode, atau commit. Backend awal hanya membuka `GET /health` pada `127.0.0.1:3001`; belum ada akun atau fungsi AI.
+Salin `.env.example` ke `.env` untuk konfigurasi lokal. `.env` diabaikan Git; jangan simpan secret di file contoh, kode, atau commit. Backend membuka API hanya pada `127.0.0.1:3001` secara bawaan. Data lokal disimpan di `.data/jarvis.db` (juga diabaikan Git).
 
-Status: Phase 0–2 adalah desain awal. Phase 0 belum final sampai wawancara pengguna dan keputusan produk selesai. Phase 3 sudah memiliki kerangka repo dan tes dasar; fungsi produk pada fase berikutnya belum dibangun.
+## Phase 4–5 — backend dan AI
+
+Backend sekarang menyediakan akun lokal, profil, agent dan grup, percakapan, task dan workflow sederhana, perangkat, izin tindakan, audit, serta event real time. Integrasi OpenAI memakai Responses API; pilihan model otomatis/cepat/mendalam, respons streaming, dua tool aman (`current_time` dan `calculate`), konteks percakapan, memori manual yang bisa dihapus, dan pencatatan token tersedia. Lihat [panduan API dan cakupan](docs/architecture/phase-4-5-backend-ai.md).
+
+Untuk memasang API key sendiri di Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+Isi baris `OPENAI_API_KEY=` dengan kunci milikmu setelah tanda `=` lalu simpan. Jangan tempelkan kunci ke chat. Jalankan `npm run dev:backend` dari root. `GET /health` dapat dibuka tanpa akun. Uji AI langsung memerlukan API key aktif dan mungkin menimbulkan biaya pada akun OpenAI.
+
+Sesudah build, jalankan `npm run start:backend` dari root untuk memakai hasil kompilasi.
+
+Status: Phase 0–2 adalah desain awal. Phase 0 belum final sampai wawancara pengguna dan keputusan produk selesai. Phase 3 sudah memiliki kerangka repo dan tes dasar. Phase 4–5 kini memiliki fondasi backend yang diuji otomatis; penyambungan aplikasi desktop/mobile, tindakan perangkat lokal, dan uji langsung OpenAI masih tahap berikutnya.

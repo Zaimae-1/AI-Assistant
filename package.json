@@ -12,11 +12,12 @@
     "dev:tauri": "cd apps/desktop && npm exec -- tauri dev",
     "build:tauri": "cd apps/desktop && npm exec -- tauri build --debug --no-bundle --ci",
     "dev:backend": "node --watch --env-file-if-exists=.env --import tsx services/backend/src/server.ts",
+    "start:backend": "node --env-file-if-exists=.env services/backend/dist/services/backend/src/server.js",
     "build": "npm run build -w @jarvis/backend && npm run build -w @jarvis/desktop",
     "typecheck": "npm run typecheck -w @jarvis/backend && npm run typecheck -w @jarvis/desktop",
-    "lint": "eslint apps/desktop/frontend/src services/backend/src tests/contract",
-    "format:check": "prettier --check package.json eslint.config.mjs apps/desktop/frontend services/backend/src services/backend/package.json services/backend/tsconfig.json core/protocol/package.json tests/contract",
-    "format": "prettier --write package.json eslint.config.mjs apps/desktop/frontend services/backend/src services/backend/package.json services/backend/tsconfig.json core/protocol/package.json tests/contract",
+    "lint": "eslint apps/desktop/frontend/src services/backend/src domains/core/src tests/contract",
+    "format:check": "prettier --check package.json eslint.config.mjs apps/desktop/frontend services/backend/src services/backend/test services/backend/package.json services/backend/tsconfig.json domains/core/src core/protocol/package.json tests/contract",
+    "format": "prettier --write package.json eslint.config.mjs apps/desktop/frontend services/backend/src services/backend/test services/backend/package.json services/backend/tsconfig.json domains/core/src core/protocol/package.json tests/contract",
     "test": "npm run test -w @jarvis/protocol && npm run test -w @jarvis/backend"
   },
   "devDependencies": {

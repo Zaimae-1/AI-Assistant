@@ -8,9 +8,13 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test test/*.test.ts",
-    "start": "node dist/server.js"
+    "start": "node dist/services/backend/src/server.js"
   },
   "devDependencies": {
     "tsx": "^4.0.0"
+  },
+  "dependencies": {
+    "openai": "^7.34.0",
+    "zod": "^4.6.7"
   }
 }

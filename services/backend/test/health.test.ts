@@ -12,7 +12,10 @@ test("backend responds to health check and rejects unknown routes", async () => 
     const base = `http://127.0.0.1:${address.port}`;
     const healthy = await fetch(`${base}/health`);
     assert.equal(healthy.status, 200);
-    assert.deepEqual(await healthy.json(), { status: "ok", service: "jarvis-backend" });
+    assert.deepEqual(await healthy.json(), {
+      status: "ok",
+      service: "jarvis-backend",
+    });
     assert.equal((await fetch(`${base}/missing`)).status, 404);
   } finally {
     server.close();
