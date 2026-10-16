@@ -49,7 +49,14 @@ export function createApp(options: AppOptions = {}) {
         response,
         store,
         provider: options.provider,
-        models: options.models ?? modelCatalogFromEnv(),
+        models:
+          options.models ??
+          modelCatalogFromEnv(
+            process.env,
+            options.provider?.name ??
+              process.env.JARVIS_AI_PROVIDER ??
+              "gemini",
+          ),
         publish,
         audit,
       })

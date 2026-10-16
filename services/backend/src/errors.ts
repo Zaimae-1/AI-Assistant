@@ -25,7 +25,7 @@ export function providerFailure(error: unknown): HttpError {
     return new HttpError(
       429,
       "provider_quota_exhausted",
-      "OpenAI API credits are exhausted",
+      "AI provider credits are exhausted",
     );
   }
   if (details?.status === 429)

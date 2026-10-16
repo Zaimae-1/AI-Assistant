@@ -1,5 +1,5 @@
 import { createApp } from "./app.js";
-import { OpenAIProvider } from "./ai/openai.js";
+import { configuredProvider } from "./ai/config.js";
 import { Store } from "./store.js";
 
 const rawPort = process.env.JARVIS_BACKEND_PORT ?? "3001";
@@ -9,9 +9,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 const store = new Store(process.env.JARVIS_DB_PATH ?? ".data/jarvis.db");
-const provider = process.env.OPENAI_API_KEY
-  ? new OpenAIProvider(process.env.OPENAI_API_KEY)
-  : undefined;
+const { provider } = configuredProvider();
 createApp({ store, provider }).listen(port, "127.0.0.1", () => {
   console.log(`Jarvis backend ready at http://127.0.0.1:${port}`);
 });

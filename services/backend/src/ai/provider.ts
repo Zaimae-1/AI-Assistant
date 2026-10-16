@@ -16,12 +16,14 @@ export interface ProviderRequest {
   instructions: string;
   items: ProviderItem[];
   tools: ProviderTool[];
+  continuation?: unknown;
 }
 
 export interface ProviderResult {
   text: string;
   calls: Array<{ callId: string; name: string; arguments: string }>;
   usage: Usage;
+  continuation?: unknown;
 }
 
 export interface AIProvider {

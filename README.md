@@ -36,17 +36,19 @@ Salin `.env.example` ke `.env` untuk konfigurasi lokal. `.env` diabaikan Git; ja
 
 ## Phase 4–5 — backend dan AI
 
-Backend sekarang menyediakan akun lokal, profil, agent dan grup, percakapan, task dan workflow sederhana, perangkat, izin tindakan, audit, serta event real time. Integrasi OpenAI memakai Responses API; pilihan model otomatis/cepat/mendalam, respons streaming, dua tool aman (`current_time` dan `calculate`), konteks percakapan, memori manual yang bisa dihapus, dan pencatatan token tersedia. Lihat [panduan API dan cakupan](docs/architecture/phase-4-5-backend-ai.md).
+Backend sekarang menyediakan akun lokal, profil, agent dan grup, percakapan, task dan workflow sederhana, perangkat, izin tindakan, audit, serta event real time. Gemini menjadi provider bawaan; OpenAI tetap bisa dipilih. Keduanya memakai pilihan model otomatis/cepat/mendalam, respons streaming, dua tool aman (`current_time` dan `calculate`), konteks percakapan, memori manual yang bisa dihapus, dan pencatatan token. Lihat [panduan API dan cakupan](docs/architecture/phase-4-5-backend-ai.md).
 
-Untuk memasang API key sendiri di Windows PowerShell:
+Untuk konfigurasi baru di Windows PowerShell, salin file contoh bila `.env` belum ada:
 
 ```powershell
 Copy-Item .env.example .env
 notepad .env
 ```
 
-Isi baris `OPENAI_API_KEY=` dengan kunci milikmu setelah tanda `=` lalu simpan. Jangan tempelkan kunci ke chat. Jalankan `npm run dev:backend` dari root. `GET /health` dapat dibuka tanpa akun. Uji AI langsung memerlukan API key aktif dan mungkin menimbulkan biaya pada akun OpenAI.
+Jika `.env` sudah ada, cukup jalankan `notepad .env` tanpa menyalin ulang. Tambahkan `JARVIS_AI_PROVIDER=gemini` dan `GEMINI_API_KEY=` beserta kuncimu. Key Gemini dapat dibuat melalui [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key). Jangan tempelkan key ke chat. Jalankan `npm run dev:backend` dari root. `GET /health` dapat dibuka tanpa akun. Key OpenAI yang tetap ada di `.env` tidak dipakai saat Gemini dipilih.
+
+Google menyediakan [free tier Gemini API](https://ai.google.dev/gemini-api/docs/pricing) dengan batas penggunaan. Menurut [ketentuan Google](https://ai.google.dev/gemini-api/terms), konten pada layanan gratis dapat dipakai untuk meningkatkan produknya; perhatikan hal ini sebelum mengirim data sensitif.
 
 Sesudah build, jalankan `npm run start:backend` dari root untuk memakai hasil kompilasi.
 
-Status: Phase 0–2 adalah desain awal. Phase 0 belum final sampai wawancara pengguna dan keputusan produk selesai. Phase 3 sudah memiliki kerangka repo dan tes dasar. Phase 4–5 kini memiliki fondasi backend yang diuji otomatis; penyambungan aplikasi desktop/mobile, tindakan perangkat lokal, dan uji langsung OpenAI masih tahap berikutnya.
+Status: Phase 0–2 adalah desain awal. Phase 0 belum final sampai wawancara pengguna dan keputusan produk selesai. Phase 3 sudah memiliki kerangka repo dan tes dasar. Phase 4–5 kini memiliki fondasi backend yang diuji otomatis; penyambungan aplikasi desktop/mobile dan tindakan perangkat lokal masih tahap berikutnya. Uji OpenAI langsung tertahan karena kredit habis; Gemini menunggu key lokal untuk uji langsung.

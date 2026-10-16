@@ -13,7 +13,8 @@ export function registerAIRoutes(router: Router): void {
   const busy = new Set<string>();
 
   router.add("GET", "/v1/models", (context) => ({
-    provider: "openai",
+    provider:
+      context.provider?.name ?? process.env.JARVIS_AI_PROVIDER ?? "gemini",
     available: Boolean(context.provider),
     modes: ["automatic", "fast", "deep"],
     models: context.models,
@@ -30,7 +31,7 @@ export function registerAIRoutes(router: Router): void {
       throw new HttpError(
         503,
         "provider_unconfigured",
-        "OPENAI_API_KEY is not configured on the backend",
+        "Selected AI provider key is not configured on the backend",
       );
     const input = z
       .object({
@@ -226,7 +227,13 @@ export function registerAIRoutes(router: Router): void {
           model,
           result.usage.inputTokens,
           result.usage.outputTokens,
-          estimateCostMicros(model, result.usage, context.models),
+          estimateCostMicros(
+            model,
+            result.usage,
+            context.models,
+            process.env,
+            context.provider!.name,
+          ),
           now,
         );
         context.store.run(

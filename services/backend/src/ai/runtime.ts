@@ -1,4 +1,5 @@
 import type { AIProvider, ProviderItem } from "./provider.js";
+import { HttpError } from "../errors.js";
 import { executeSafeTool, safeTools } from "./tools.js";
 
 export interface RunOptions {
@@ -15,12 +16,14 @@ export async function runAgent(options: RunOptions) {
   const items = [...options.context];
   const usage = { inputTokens: 0, outputTokens: 0 };
   let toolCount = 0;
+  let continuation: unknown;
   for (let round = 0; round < 4; round++) {
     const request = {
       model: options.model,
       instructions: options.instructions,
       items,
       tools: safeTools,
+      continuation,
     };
     const result = options.stream
       ? await options.provider.stream(
@@ -30,13 +33,21 @@ export async function runAgent(options: RunOptions) {
       : await options.provider.generate(request);
     usage.inputTokens += result.usage.inputTokens;
     usage.outputTokens += result.usage.outputTokens;
-    if (result.calls.length === 0)
+    if (result.calls.length === 0) {
+      if (!result.text.trim())
+        throw new HttpError(
+          502,
+          "empty_model_response",
+          "AI provider returned no answer",
+        );
       return { text: result.text, usage, toolCount };
+    }
     if (round === 3 || toolCount + result.calls.length > 8) {
       throw new Error("Tool round or call limit reached");
     }
     if (result.text)
       items.push({ type: "message", role: "assistant", content: result.text });
+    continuation = result.continuation;
     for (const call of result.calls) {
       const output = executeSafeTool(call.name, call.arguments);
       items.push({

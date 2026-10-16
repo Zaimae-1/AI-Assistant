@@ -5,7 +5,16 @@ export interface ModelCatalog {
   deep: string;
 }
 
-export function modelCatalogFromEnv(env = process.env): ModelCatalog {
+export function modelCatalogFromEnv(
+  env = process.env,
+  provider = "openai",
+): ModelCatalog {
+  if (provider === "gemini") {
+    return {
+      fast: env.GEMINI_MODEL_FAST ?? "gemini-3.5-flash-lite",
+      deep: env.GEMINI_MODEL_DEEP ?? "gemini-3.8-flash",
+    };
+  }
   return {
     fast: env.OPENAI_MODEL_FAST ?? "gpt-5.6-terra",
     deep: env.OPENAI_MODEL_DEEP ?? "gpt-5.6-sol",
@@ -37,12 +46,14 @@ export function estimateCostMicros(
   usage: { inputTokens: number; outputTokens: number },
   catalog: ModelCatalog,
   env = process.env,
+  provider = "openai",
 ): number | null {
   const suffix =
     model === catalog.fast ? "FAST" : model === catalog.deep ? "DEEP" : null;
   if (!suffix) return null;
-  const inputRate = Number(env[`OPENAI_${suffix}_INPUT_USD_PER_MILLION`]);
-  const outputRate = Number(env[`OPENAI_${suffix}_OUTPUT_USD_PER_MILLION`]);
+  const prefix = provider.toUpperCase();
+  const inputRate = Number(env[`${prefix}_${suffix}_INPUT_USD_PER_MILLION`]);
+  const outputRate = Number(env[`${prefix}_${suffix}_OUTPUT_USD_PER_MILLION`]);
   if (
     !Number.isFinite(inputRate) ||
     !Number.isFinite(outputRate) ||
@@ -52,8 +63,8 @@ export function estimateCostMicros(
     return null;
   }
   if (
-    !env[`OPENAI_${suffix}_INPUT_USD_PER_MILLION`] ||
-    !env[`OPENAI_${suffix}_OUTPUT_USD_PER_MILLION`]
+    !env[`${prefix}_${suffix}_INPUT_USD_PER_MILLION`] ||
+    !env[`${prefix}_${suffix}_OUTPUT_USD_PER_MILLION`]
   ) {
     return null;
   }
