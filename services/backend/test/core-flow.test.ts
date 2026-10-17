@@ -562,9 +562,21 @@ test("device command is scoped, claimed once, and revoked with device", async ()
       ).body.command,
       null,
     );
-    h.store.run("UPDATE devices SET last_seen=? WHERE id=?", "2020-01-01T00:00:00.000Z", device.id);
-    await h.api(`/v1/devices/${device.id}/commands/claim`, "POST", {}, device.device_token);
-    assert.ok((await h.api("/v1/devices", "GET", undefined, user.token)).body[0].last_seen > "2020-01-01T00:00:00.000Z");
+    h.store.run(
+      "UPDATE devices SET last_seen=? WHERE id=?",
+      "2020-01-01T00:00:00.000Z",
+      device.id,
+    );
+    await h.api(
+      `/v1/devices/${device.id}/commands/claim`,
+      "POST",
+      {},
+      device.device_token,
+    );
+    assert.ok(
+      (await h.api("/v1/devices", "GET", undefined, user.token)).body[0]
+        .last_seen > "2020-01-01T00:00:00.000Z",
+    );
     assert.equal(
       (
         await h.api(
@@ -622,8 +634,14 @@ test("device command is scoped, claimed once, and revoked with device", async ()
       "clean",
     );
     const audit = (await h.api("/v1/audit", "GET", undefined, user.token)).body;
-    for (const action of ["device.command.queue", "device.command.claim", "device.command.result"]) {
-      assert.ok(audit.some((event: { action: string }) => event.action === action));
+    for (const action of [
+      "device.command.queue",
+      "device.command.claim",
+      "device.command.result",
+    ]) {
+      assert.ok(
+        audit.some((event: { action: string }) => event.action === action),
+      );
     }
     const rotated = await h.api(
       `/v1/devices/${device.id}/rotate-token`,
@@ -1093,8 +1111,16 @@ test("file-backed store survives restart and upgrades older agent schema", () =>
         .all<{ name: string }>("PRAGMA table_info(agents)")
         .some((column) => column.name === "deleted_at"),
     );
-    assert.ok(migrated.all<{ name: string }>("PRAGMA table_info(devices)").some((column) => column.name === "token_hash"));
-    assert.ok(migrated.all<{ name: string }>("PRAGMA table_info(permission_requests)").some((column) => column.name === "arguments_json"));
+    assert.ok(
+      migrated
+        .all<{ name: string }>("PRAGMA table_info(devices)")
+        .some((column) => column.name === "token_hash"),
+    );
+    assert.ok(
+      migrated
+        .all<{ name: string }>("PRAGMA table_info(permission_requests)")
+        .some((column) => column.name === "arguments_json"),
+    );
     migrated.close();
   } finally {
     rmSync(dir, { recursive: true, force: true });
