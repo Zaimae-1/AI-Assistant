@@ -509,6 +509,22 @@ mod tests {
         assert_eq!(execute(&config(), &command).status, "succeeded");
     }
 
+    #[test]
+    fn lists_local_processes_for_the_selected_device() {
+        let command = ClaimedCommand {
+            protocol_version: "1.0".into(),
+            id: "process-list".into(),
+            device_id: "dev".into(),
+            capability: "process.list".into(),
+            resource: "device:dev".into(),
+            arguments: serde_json::json!({}),
+            expires_at: (Utc::now() + chrono::Duration::minutes(1)).to_rfc3339(),
+        };
+        let result = execute(&config(), &command);
+        assert_eq!(result.status, "succeeded");
+        assert!(!result.output.is_empty());
+    }
+
     #[cfg(windows)]
     #[test]
     fn terminal_profile_runs_only_a_locally_configured_program() {

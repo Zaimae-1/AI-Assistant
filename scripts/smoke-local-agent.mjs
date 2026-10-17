@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
 import { createApp } from "../services/backend/src/app.ts";
@@ -76,6 +76,10 @@ try {
   const result = await api(`/v1/device-commands/${command.id}`, "GET", undefined, account.token);
   assert.equal(result.status, "succeeded");
   assert.equal(JSON.parse(result.output).os, "windows");
+  const log = readFileSync(join(temp, "agent.log"), "utf8");
+  assert.match(log, new RegExp(`Command ${command.id}: succeeded`));
+  assert.equal(log.includes(device.device_token), false);
+  assert.equal(log.includes(result.output), false);
   console.log("Local agent end-to-end smoke passed: enrolled, claimed, authorized, executed, and reported.");
 } finally {
   try {
