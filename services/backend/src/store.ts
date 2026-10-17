@@ -73,14 +73,26 @@ export class Store {
       CREATE TABLE IF NOT EXISTS devices (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), name TEXT NOT NULL,
         platform TEXT NOT NULL, capabilities_json TEXT NOT NULL, last_seen TEXT NOT NULL,
-        revoked_at TEXT, created_at TEXT NOT NULL
+        revoked_at TEXT, created_at TEXT NOT NULL, token_hash TEXT
       );
+      CREATE TABLE IF NOT EXISTS device_commands (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+        task_id TEXT NOT NULL REFERENCES tasks(id), device_id TEXT NOT NULL REFERENCES devices(id),
+        agent_id TEXT, capability TEXT NOT NULL, resource TEXT NOT NULL,
+        arguments_json TEXT NOT NULL, permission_request_id TEXT NOT NULL REFERENCES permission_requests(id),
+        expires_at TEXT NOT NULL, idempotency_key TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'queued', output TEXT, error_code TEXT,
+        created_at TEXT NOT NULL, claimed_at TEXT, completed_at TEXT,
+        UNIQUE(user_id, device_id, idempotency_key)
+      );
+      CREATE INDEX IF NOT EXISTS device_commands_queue ON device_commands(device_id,status,created_at);
       CREATE TABLE IF NOT EXISTS permission_requests (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), task_id TEXT NOT NULL REFERENCES tasks(id),
         device_id TEXT NOT NULL REFERENCES devices(id), agent_id TEXT REFERENCES agents(id),
         capability TEXT NOT NULL, resource TEXT NOT NULL, risk INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending', expires_at TEXT NOT NULL,
-        nonce_hash TEXT, consumed_at TEXT, created_at TEXT NOT NULL
+        nonce_hash TEXT, consumed_at TEXT, created_at TEXT NOT NULL,
+        arguments_json TEXT NOT NULL DEFAULT '{}'
       );
       CREATE TABLE IF NOT EXISTS permission_policies (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), agent_id TEXT,
@@ -109,6 +121,20 @@ export class Store {
     );
     if (!agentColumns.some((column) => column.name === "deleted_at")) {
       this.db.exec("ALTER TABLE agents ADD COLUMN deleted_at TEXT");
+    }
+    const deviceColumns = this.all<{ name: string }>(
+      "PRAGMA table_info(devices)",
+    );
+    if (!deviceColumns.some((column) => column.name === "token_hash")) {
+      this.db.exec("ALTER TABLE devices ADD COLUMN token_hash TEXT");
+    }
+    const permissionColumns = this.all<{ name: string }>(
+      "PRAGMA table_info(permission_requests)",
+    );
+    if (!permissionColumns.some((column) => column.name === "arguments_json")) {
+      this.db.exec(
+        "ALTER TABLE permission_requests ADD COLUMN arguments_json TEXT NOT NULL DEFAULT '{}'",
+      );
     }
   }
 

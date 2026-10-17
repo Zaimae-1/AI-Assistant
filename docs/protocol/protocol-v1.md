@@ -22,9 +22,9 @@ Events are observations. They never authorize an action by themselves.
 
 ## Command catalog
 
-The envelope and task, message, permission, and device contracts are domain-neutral. The initial `device.command.requested` capability catalog (`git.status`, `git.diff`, `test.run`) is a **developer example**, not the definition of Jarvis or a product-wide MVP choice. Other work, study, and personal capabilities require their own reviewed schemas. A command contains target device, task, resource scope, arguments, expiry, idempotency key, and approval reference when required. The Local Agent rejects unknown capabilities, expired commands, wrong device, out-of-scope resources, revoked grants, or unsupported versions.
+The envelope and task, message, permission, and device contracts are domain-neutral. The current `device.command.requested` capability catalog (`git.status`, `git.diff`, `test.run`, `file.read`, `system.info`, `process.list`, `terminal.run`, `app.open`, `app.close`, `os.lock`) is an implementation sample, not the definition of Jarvis or a product-wide MVP choice. Other work, study, and personal capabilities require their own reviewed schemas. A command contains target device, task, resource scope, arguments, expiry, idempotency key, and approval reference. The Local Agent rejects unknown capabilities, expired commands, wrong device, out-of-scope resources, revoked grants, or unsupported versions.
 
-No generic shell command is defined in v1. `test.run` identifies a configured test profile ID, not an arbitrary command string from the model. Pull, commit, and conflict resolution are not command types in this draft; they require their own reviewed contract before implementation.
+No generic shell command is defined in v1. `test.run` and `terminal.run` identify locally configured profile IDs, not arbitrary command strings from the model. `app.open` names a local application profile; `app.close` names a launch performed by the same running agent. `file.read` names one approved absolute file path. `system.info`, `process.list`, and `os.lock` name one device. Pull, commit, and conflict resolution are not command types in this draft; they require their own reviewed contract before implementation.
 
 ## Lifecycle and errors
 

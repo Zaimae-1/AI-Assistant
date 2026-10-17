@@ -10,11 +10,17 @@ import { sendJson, type Router } from "../http.js";
 import type { Store } from "../store.js";
 import { ownedAgent } from "./agents.js";
 import { ownedTask } from "./tasks.js";
+import { issueDeviceToken } from "../device-auth.js";
+import {
+  isDeviceCapability,
+  parseDeviceArguments,
+  validateDeviceResource,
+} from "../device-capabilities.js";
 
 function ownedDevice(store: Store, userId: string, deviceId: string) {
   return assertFound(
     store.get<{ id: string; revoked_at: string | null }>(
-      "SELECT * FROM devices WHERE id=? AND user_id=?",
+      "SELECT id,user_id,name,platform,capabilities_json,last_seen,revoked_at,created_at FROM devices WHERE id=? AND user_id=?",
       deviceId,
       userId,
     ),
@@ -25,7 +31,7 @@ function ownedDevice(store: Store, userId: string, deviceId: string) {
 export function registerDevicePermissionRoutes(router: Router): void {
   router.add("GET", "/v1/devices", (context) =>
     context.store.all(
-      "SELECT * FROM devices WHERE user_id=? ORDER BY created_at",
+      "SELECT id,user_id,name,platform,capabilities_json,last_seen,revoked_at,created_at FROM devices WHERE user_id=? ORDER BY created_at",
       context.user!.id,
     ),
   );
@@ -66,11 +72,30 @@ export function registerDevicePermissionRoutes(router: Router): void {
       `device:${id}`,
       "succeeded",
     );
-    sendJson(
-      context.response,
-      201,
-      ownedDevice(context.store, context.user!.id, id),
+    const deviceToken = issueDeviceToken(context.store, id);
+    sendJson(context.response, 201, {
+      ...ownedDevice(context.store, context.user!.id, id),
+      device_token: deviceToken,
+    });
+  });
+
+  router.add("POST", "/v1/devices/:id/rotate-token", (context) => {
+    const device = ownedDevice(
+      context.store,
+      context.user!.id,
+      context.params.id,
     );
+    if (device.revoked_at)
+      throw new HttpError(409, "device_revoked", "Device is revoked");
+    const deviceToken = issueDeviceToken(context.store, device.id);
+    context.audit(
+      context.user!.id,
+      context.user!.id,
+      "device.rotate_token",
+      `device:${device.id}`,
+      "succeeded",
+    );
+    return { device_id: device.id, device_token: deviceToken };
   });
 
   router.add("POST", "/v1/devices/:id/heartbeat", (context) => {
@@ -192,7 +217,7 @@ export function registerDevicePermissionRoutes(router: Router): void {
 
   router.add("GET", "/v1/permissions", (context) =>
     context.store.all(
-      `SELECT id,task_id,device_id,agent_id,capability,resource,risk,status,expires_at,consumed_at,created_at
+      `SELECT id,task_id,device_id,agent_id,capability,resource,arguments_json,risk,status,expires_at,consumed_at,created_at
        FROM permission_requests WHERE user_id=? ORDER BY created_at DESC LIMIT 200`,
       context.user!.id,
     ),
@@ -206,10 +231,20 @@ export function registerDevicePermissionRoutes(router: Router): void {
         agent_id: z.uuid().optional(),
         capability: z.string().min(1).max(80),
         resource: z.string().min(1).max(2048),
+        arguments: z.record(z.string(), z.unknown()).default({}),
       })
       .strict()
       .parse(context.body);
     const task = ownedTask(context.store, context.user!.id, input.task_id);
+    if (isDeviceCapability(input.capability)) {
+      input.arguments = parseDeviceArguments(input.capability, input.arguments);
+      validateDeviceResource(
+        input.capability,
+        input.device_id,
+        input.resource,
+        input.arguments,
+      );
+    }
     const device = ownedDevice(
       context.store,
       context.user!.id,
@@ -245,6 +280,7 @@ export function registerDevicePermissionRoutes(router: Router): void {
       agentId: input.agent_id ?? null,
       capability: input.capability,
       resource: input.resource,
+      argumentsJson: JSON.stringify(input.arguments),
     });
     context.audit(
       context.user!.id,

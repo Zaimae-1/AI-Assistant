@@ -51,4 +51,8 @@ Google menyediakan [free tier Gemini API](https://ai.google.dev/gemini-api/docs/
 
 Sesudah build, jalankan `npm run start:backend` dari root untuk memakai hasil kompilasi.
 
-Status: Phase 0–2 adalah desain awal. Phase 0 belum final sampai wawancara pengguna dan keputusan produk selesai. Phase 3 sudah memiliki kerangka repo dan tes dasar. Phase 4–5 kini memiliki fondasi backend yang diuji otomatis; penyambungan aplikasi desktop/mobile dan tindakan perangkat lokal masih tahap berikutnya. Uji OpenAI langsung tertahan karena kredit habis; Gemini menunggu key lokal untuk uji langsung.
+## Phase 6 — local agent
+
+Fondasi agent Rust dan jalur perintah perangkat tersedia untuk operasi baca Git/file, informasi sistem, dan profil tes lokal. Lihat [cakupan dan cara menyiapkan agent](docs/architecture/phase-6-local-agent.md). Integrasi UI serta kemampuan kontrol OS yang lebih luas masih berlanjut.
+
+Status: Phase 0–2 adalah desain awal. Phase 0 belum final sampai wawancara pengguna dan keputusan produk selesai. Phase 3 sudah memiliki kerangka repo dan tes dasar. Phase 4–5 memiliki fondasi backend yang diuji otomatis; Gemini juga sudah lulus uji respons langsung dengan key lokal. Uji OpenAI langsung tertahan karena kredit habis.

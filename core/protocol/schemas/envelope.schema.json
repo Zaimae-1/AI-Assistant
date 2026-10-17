@@ -125,17 +125,19 @@
     },
     "deviceCommand": {
       "type": "object",
-      "required": ["command_id", "device_id", "project_id", "project_root", "capability", "arguments", "expires_at"],
+      "required": ["command_id", "device_id", "resource", "capability", "arguments", "permission_request_id", "expires_at"],
       "properties": {
         "command_id": { "$ref": "#/$defs/id" },
         "device_id": { "$ref": "#/$defs/id" },
-        "project_id": { "$ref": "#/$defs/id" },
-        "project_root": { "type": "string", "minLength": 1, "maxLength": 2048 },
-        "capability": { "enum": ["git.status", "git.diff", "test.run"] },
+        "resource": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "capability": { "enum": ["git.status", "git.diff", "test.run", "file.read", "system.info", "process.list", "terminal.run", "app.open", "app.close", "os.lock"] },
         "arguments": {
           "type": "object",
           "properties": {
-            "test_profile_id": { "type": "string", "minLength": 1, "maxLength": 80 }
+            "test_profile_id": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "command_profile_id": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "app_profile_id": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "launch_id": { "$ref": "#/$defs/id" }
           },
           "additionalProperties": false
         },
@@ -153,12 +155,24 @@
           }
         },
         {
-          "if": { "properties": { "capability": { "enum": ["git.status", "git.diff"] } } },
+          "if": { "properties": { "capability": { "enum": ["git.status", "git.diff", "file.read", "system.info", "process.list", "os.lock"] } } },
           "then": {
             "properties": {
               "arguments": { "type": "object", "maxProperties": 0 }
             }
           }
+        },
+        {
+          "if": { "properties": { "capability": { "const": "terminal.run" } } },
+          "then": { "properties": { "arguments": { "type": "object", "required": ["command_profile_id"], "maxProperties": 1 } } }
+        },
+        {
+          "if": { "properties": { "capability": { "const": "app.open" } } },
+          "then": { "properties": { "arguments": { "type": "object", "required": ["app_profile_id"], "maxProperties": 1 } } }
+        },
+        {
+          "if": { "properties": { "capability": { "const": "app.close" } } },
+          "then": { "properties": { "arguments": { "type": "object", "required": ["launch_id"], "maxProperties": 1 } } }
         }
       ]
     },

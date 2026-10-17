@@ -35,3 +35,17 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+
+  local-agent:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: core/rust-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo test --locked
+      - run: cargo build --locked

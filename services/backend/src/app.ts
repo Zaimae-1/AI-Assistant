@@ -8,6 +8,7 @@ import { registerAgentRoutes } from "./routes/agents.js";
 import { registerAIRoutes } from "./routes/ai.js";
 import { registerConversationRoutes } from "./routes/conversations.js";
 import { registerDevicePermissionRoutes } from "./routes/devices-permissions.js";
+import { registerDeviceCommandRoutes } from "./routes/device-commands.js";
 import { registerGroupRoutes } from "./routes/groups.js";
 import { registerMemoryUsageRoutes } from "./routes/memory-usage.js";
 import { registerTaskRoutes } from "./routes/tasks.js";
@@ -35,6 +36,7 @@ export function createApp(options: AppOptions = {}) {
   registerConversationRoutes(router);
   registerTaskRoutes(router);
   registerDevicePermissionRoutes(router);
+  registerDeviceCommandRoutes(router);
   registerEventRoutes(router, hub);
   registerMemoryUsageRoutes(router);
   registerAIRoutes(router);

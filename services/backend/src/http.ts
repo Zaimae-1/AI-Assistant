@@ -25,7 +25,7 @@ export interface Context {
     action: string,
     resource: string,
     result: string,
-    actorKind?: "user" | "agent",
+    actorKind?: "user" | "agent" | "device",
   ) => void;
 }
 
@@ -161,7 +161,7 @@ export function createAudit(context: Pick<Context, "store" | "publish">) {
     action: string,
     resource: string,
     result: string,
-    actorKind: "user" | "agent" = "user",
+    actorKind: "user" | "agent" | "device" = "user",
   ) => {
     const event = {
       id: randomUUID(),

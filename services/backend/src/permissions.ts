@@ -9,6 +9,12 @@ const baseline: Record<string, RiskLevel> = {
   "git.diff": 0,
   "test.run": 2,
   "file.read": 0,
+  "system.info": 0,
+  "process.list": 0,
+  "os.lock": 2,
+  "terminal.run": 2,
+  "app.open": 2,
+  "app.close": 2,
   "file.write": 2,
   "external.send": 3,
 };
@@ -34,6 +40,7 @@ export interface PermissionScope {
   agentId: string | null;
   capability: string;
   resource: string;
+  argumentsJson?: string;
 }
 
 export function requestPermission(store: Store, scope: PermissionScope) {
@@ -62,8 +69,8 @@ export function requestPermission(store: Store, scope: PermissionScope) {
     status === "allowed" ? randomBytes(32).toString("base64url") : null;
   store.run(
     `INSERT INTO permission_requests
-     (id,user_id,task_id,device_id,agent_id,capability,resource,risk,status,expires_at,nonce_hash,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+     (id,user_id,task_id,device_id,agent_id,capability,resource,risk,status,expires_at,nonce_hash,created_at,arguments_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     id,
     scope.userId,
     scope.taskId,
@@ -76,8 +83,18 @@ export function requestPermission(store: Store, scope: PermissionScope) {
     expiresAt,
     nonce ? digest(nonce) : null,
     now.toISOString(),
+    scope.argumentsJson ?? "{}",
   );
-  return { id, ...scope, risk, status, expires_at: expiresAt, nonce };
+  const { argumentsJson, ...publicScope } = scope;
+  return {
+    id,
+    ...publicScope,
+    arguments: JSON.parse(argumentsJson ?? "{}"),
+    risk,
+    status,
+    expires_at: expiresAt,
+    nonce,
+  };
 }
 
 export function decidePermission(
@@ -129,7 +146,7 @@ export function consumePermission(
     consumed_at: string | null;
   }>(
     `SELECT id,nonce_hash,status,expires_at,consumed_at FROM permission_requests
-     WHERE id=? AND user_id=? AND task_id=? AND device_id=? AND capability=? AND resource=?
+     WHERE id=? AND user_id=? AND task_id=? AND device_id=? AND capability=? AND resource=? AND arguments_json=?
        AND (agent_id IS ? OR agent_id=?)`,
     requestId,
     scope.userId,
@@ -137,6 +154,7 @@ export function consumePermission(
     scope.deviceId,
     scope.capability,
     scope.resource,
+    scope.argumentsJson ?? "{}",
     scope.agentId,
     scope.agentId,
   );

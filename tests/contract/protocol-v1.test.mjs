@@ -83,10 +83,10 @@ const validCases = [
     ...base("device.command.requested", {
       command_id: commandId,
       device_id: deviceId,
-      project_id: id(10),
-      project_root: "C:/repo",
+      resource: "C:/repo",
       capability: "git.status",
       arguments: {},
+      permission_request_id: requestId,
       expires_at: expiry,
     }),
     task_id: taskId,
@@ -96,8 +96,7 @@ const validCases = [
     ...base("device.command.requested", {
       command_id: commandId,
       device_id: deviceId,
-      project_id: id(10),
-      project_root: "C:/repo",
+      resource: "C:/repo",
       capability: "test.run",
       arguments: { test_profile_id: "unit" },
       permission_request_id: requestId,
@@ -135,7 +134,7 @@ test("commands require scope, idempotency and registered capability", () => {
   const command = validCases[4];
   for (const item of [
     { ...command, idempotency_key: undefined },
-    { ...command, payload: { ...command.payload, project_root: undefined } },
+    { ...command, payload: { ...command.payload, resource: undefined } },
     {
       ...command,
       payload: { ...command.payload, capability: "shell.execute" },

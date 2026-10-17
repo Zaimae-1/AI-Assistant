@@ -398,6 +398,7 @@ test("risk two permission requires fresh approval and nonce is one use", async (
         device_id: device.id,
         capability: "test.run",
         resource: "project:one",
+        arguments: { test_profile_id: "unit" },
       },
       user.token,
     );
@@ -417,7 +418,17 @@ test("risk two permission requires fresh approval and nonce is one use", async (
       agentId: null,
       capability: "test.run",
       resource: "project:one",
+      argumentsJson: '{"test_profile_id":"unit"}',
     };
+    assert.equal(
+      consumePermission(
+        h.store,
+        { ...scope, argumentsJson: '{"test_profile_id":"other"}' },
+        requested.body.id,
+        decision.body.nonce,
+      ),
+      false,
+    );
     assert.equal(
       consumePermission(h.store, scope, requested.body.id, decision.body.nonce),
       true,
@@ -425,6 +436,380 @@ test("risk two permission requires fresh approval and nonce is one use", async (
     assert.equal(
       consumePermission(h.store, scope, requested.body.id, decision.body.nonce),
       false,
+    );
+  } finally {
+    await h.close();
+  }
+});
+
+test("device command is scoped, claimed once, and revoked with device", async () => {
+  const h = await harness();
+  try {
+    const user = await h.register("local-agent@example.test");
+    const task = (
+      await h.api("/v1/tasks", "POST", { title: "Review changes" }, user.token)
+    ).body;
+    const created = await h.api(
+      "/v1/devices",
+      "POST",
+      {
+        name: "Laptop",
+        platform: "windows",
+        capabilities: ["git.status"],
+      },
+      user.token,
+    );
+    assert.equal(created.status, 201);
+    const device = created.body;
+    assert.ok(device.device_token);
+    assert.equal(device.token_hash, undefined);
+    assert.equal(
+      (await h.api("/v1/devices", "GET", undefined, user.token)).body[0]
+        .device_token,
+      undefined,
+    );
+    const request = await h.api(
+      "/v1/permissions",
+      "POST",
+      {
+        task_id: task.id,
+        device_id: device.id,
+        capability: "git.status",
+        resource: "C:\\selected-project",
+      },
+      user.token,
+    );
+    assert.equal(request.body.status, "pending");
+    const decision = await h.api(
+      `/v1/permissions/${request.body.id}/decision`,
+      "POST",
+      {
+        decision: "allow_once",
+      },
+      user.token,
+    );
+    const body = {
+      task_id: task.id,
+      device_id: device.id,
+      capability: "git.status",
+      resource: "C:\\selected-project",
+      arguments: {},
+      permission_request_id: request.body.id,
+      nonce: decision.body.nonce,
+      idempotency_key: "review-git-status-0001",
+    };
+    assert.equal(
+      (
+        await h.api(
+          "/v1/device-commands",
+          "POST",
+          {
+            ...body,
+            resource: "C:\\other-project",
+          },
+          user.token,
+        )
+      ).status,
+      403,
+    );
+    const queued = await h.api("/v1/device-commands", "POST", body, user.token);
+    assert.equal(queued.status, 201);
+    assert.ok(queued.body.expires_at <= request.body.expires_at);
+    assert.equal(
+      (await h.api("/v1/device-commands", "POST", body, user.token)).body.id,
+      queued.body.id,
+    );
+    assert.equal(
+      (
+        await h.api(
+          "/v1/device-commands",
+          "POST",
+          {
+            ...body,
+            idempotency_key: "review-git-status-0002",
+          },
+          user.token,
+        )
+      ).status,
+      403,
+    );
+    assert.equal(
+      (
+        await h.api(
+          `/v1/devices/${device.id}/commands/claim`,
+          "POST",
+          {},
+          user.token,
+        )
+      ).status,
+      401,
+    );
+    const claimed = await h.api(
+      `/v1/devices/${device.id}/commands/claim`,
+      "POST",
+      {},
+      device.device_token,
+    );
+    assert.equal(claimed.body.command.id, queued.body.id);
+    assert.equal(
+      (
+        await h.api(
+          `/v1/devices/${device.id}/commands/claim`,
+          "POST",
+          {},
+          device.device_token,
+        )
+      ).body.command,
+      null,
+    );
+    h.store.run("UPDATE devices SET last_seen=? WHERE id=?", "2020-01-01T00:00:00.000Z", device.id);
+    await h.api(`/v1/devices/${device.id}/commands/claim`, "POST", {}, device.device_token);
+    assert.ok((await h.api("/v1/devices", "GET", undefined, user.token)).body[0].last_seen > "2020-01-01T00:00:00.000Z");
+    assert.equal(
+      (
+        await h.api(
+          `/v1/devices/${device.id}/commands/${queued.body.id}/authorize`,
+          "POST",
+          {},
+          device.device_token,
+        )
+      ).body.authorized,
+      true,
+    );
+    const path = `/v1/devices/${device.id}/commands/${queued.body.id}/result`;
+    assert.equal(
+      (
+        await h.api(
+          path,
+          "POST",
+          { status: "succeeded", output: "clean" },
+          device.device_token,
+        )
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await h.api(
+          `/v1/devices/${device.id}/commands/${queued.body.id}/authorize`,
+          "POST",
+          {},
+          device.device_token,
+        )
+      ).status,
+      403,
+    );
+    assert.equal(
+      (
+        await h.api(
+          path,
+          "POST",
+          { status: "succeeded", output: "clean" },
+          device.device_token,
+        )
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await h.api(
+          `/v1/device-commands/${queued.body.id}`,
+          "GET",
+          undefined,
+          user.token,
+        )
+      ).body.output,
+      "clean",
+    );
+    const audit = (await h.api("/v1/audit", "GET", undefined, user.token)).body;
+    for (const action of ["device.command.queue", "device.command.claim", "device.command.result"]) {
+      assert.ok(audit.some((event: { action: string }) => event.action === action));
+    }
+    const rotated = await h.api(
+      `/v1/devices/${device.id}/rotate-token`,
+      "POST",
+      {},
+      user.token,
+    );
+    assert.equal(rotated.status, 200);
+    assert.equal(
+      (
+        await h.api(
+          `/v1/devices/${device.id}/identity`,
+          "GET",
+          undefined,
+          device.device_token,
+        )
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await h.api(
+          `/v1/devices/${device.id}/identity`,
+          "GET",
+          undefined,
+          rotated.body.device_token,
+        )
+      ).status,
+      200,
+    );
+    await h.api(`/v1/devices/${device.id}`, "DELETE", undefined, user.token);
+    assert.equal(
+      (
+        await h.api(
+          `/v1/devices/${device.id}/identity`,
+          "GET",
+          undefined,
+          rotated.body.device_token,
+        )
+      ).status,
+      401,
+    );
+  } finally {
+    await h.close();
+  }
+});
+
+test("application control requires a named profile and closes only a recorded launch", async () => {
+  const h = await harness();
+  try {
+    const user = await h.register("apps@example.test");
+    const task = (
+      await h.api("/v1/tasks", "POST", { title: "Open study app" }, user.token)
+    ).body;
+    const device = (
+      await h.api(
+        "/v1/devices",
+        "POST",
+        {
+          name: "Laptop",
+          platform: "windows",
+          capabilities: ["app.open", "app.close"],
+        },
+        user.token,
+      )
+    ).body;
+    const permission = await h.api(
+      "/v1/permissions",
+      "POST",
+      {
+        task_id: task.id,
+        device_id: device.id,
+        capability: "app.open",
+        resource: "app:browser",
+        arguments: { app_profile_id: "browser" },
+      },
+      user.token,
+    );
+    assert.equal(permission.body.status, "pending");
+    const decision = await h.api(
+      `/v1/permissions/${permission.body.id}/decision`,
+      "POST",
+      {
+        decision: "allow_once",
+      },
+      user.token,
+    );
+    const base = {
+      task_id: task.id,
+      device_id: device.id,
+      capability: "app.open",
+      resource: "app:browser",
+      arguments: { app_profile_id: "browser" },
+      permission_request_id: permission.body.id,
+      nonce: decision.body.nonce,
+      idempotency_key: "launch-browser-0001",
+    };
+    assert.equal(
+      (
+        await h.api(
+          "/v1/device-commands",
+          "POST",
+          {
+            ...base,
+            arguments: { app_profile_id: "editor" },
+            resource: "app:editor",
+          },
+          user.token,
+        )
+      ).status,
+      403,
+    );
+    const opened = await h.api("/v1/device-commands", "POST", base, user.token);
+    assert.equal(opened.status, 201);
+    const closeArgs = { launch_id: opened.body.id };
+    assert.equal(
+      (
+        await h.api(
+          "/v1/permissions",
+          "POST",
+          {
+            task_id: task.id,
+            device_id: device.id,
+            capability: "app.close",
+            resource: "app:wrong",
+            arguments: closeArgs,
+          },
+          user.token,
+        )
+      ).status,
+      400,
+    );
+    const closePermission = await h.api(
+      "/v1/permissions",
+      "POST",
+      {
+        task_id: task.id,
+        device_id: device.id,
+        capability: "app.close",
+        resource: `app:${opened.body.id}`,
+        arguments: closeArgs,
+      },
+      user.token,
+    );
+    const closeDecision = await h.api(
+      `/v1/permissions/${closePermission.body.id}/decision`,
+      "POST",
+      {
+        decision: "allow_once",
+      },
+      user.token,
+    );
+    const closeBase = {
+      task_id: task.id,
+      device_id: device.id,
+      capability: "app.close",
+      resource: `app:${opened.body.id}`,
+      arguments: closeArgs,
+      permission_request_id: closePermission.body.id,
+      nonce: closeDecision.body.nonce,
+      idempotency_key: "close-browser-0001",
+    };
+    assert.equal(
+      (await h.api("/v1/device-commands", "POST", closeBase, user.token))
+        .status,
+      400,
+    );
+    await h.api(
+      `/v1/devices/${device.id}/commands/claim`,
+      "POST",
+      {},
+      device.device_token,
+    );
+    await h.api(
+      `/v1/devices/${device.id}/commands/${opened.body.id}/result`,
+      "POST",
+      {
+        status: "succeeded",
+        output: JSON.stringify({ launch_id: opened.body.id }),
+      },
+      device.device_token,
+    );
+    assert.equal(
+      (await h.api("/v1/device-commands", "POST", closeBase, user.token))
+        .status,
+      201,
     );
   } finally {
     await h.close();
@@ -695,6 +1080,12 @@ test("file-backed store survives restart and upgrades older agent schema", () =>
     legacy.exec(
       "CREATE TABLE agents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, instructions TEXT NOT NULL DEFAULT '', model TEXT, status TEXT NOT NULL DEFAULT 'idle', memory_enabled INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
     );
+    legacy.exec(
+      "CREATE TABLE devices (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, platform TEXT NOT NULL, capabilities_json TEXT NOT NULL, last_seen TEXT NOT NULL, revoked_at TEXT, created_at TEXT NOT NULL)",
+    );
+    legacy.exec(
+      "CREATE TABLE permission_requests (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, task_id TEXT NOT NULL, device_id TEXT NOT NULL, agent_id TEXT, capability TEXT NOT NULL, resource TEXT NOT NULL, risk INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', expires_at TEXT NOT NULL, nonce_hash TEXT, consumed_at TEXT, created_at TEXT NOT NULL)",
+    );
     legacy.close();
     const migrated = new Store(legacyPath);
     assert.ok(
@@ -702,6 +1093,8 @@ test("file-backed store survives restart and upgrades older agent schema", () =>
         .all<{ name: string }>("PRAGMA table_info(agents)")
         .some((column) => column.name === "deleted_at"),
     );
+    assert.ok(migrated.all<{ name: string }>("PRAGMA table_info(devices)").some((column) => column.name === "token_hash"));
+    assert.ok(migrated.all<{ name: string }>("PRAGMA table_info(permission_requests)").some((column) => column.name === "arguments_json"));
     migrated.close();
   } finally {
     rmSync(dir, { recursive: true, force: true });
