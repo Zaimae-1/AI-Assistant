@@ -10,6 +10,11 @@ import { Store } from "../services/backend/src/store.ts";
 
 const binary = resolve("core/rust-agent/target/debug/jarvis-core.exe");
 if (!existsSync(binary)) throw new Error("Build the Rust agent first with cargo build");
+if (process.argv.length > 3 || (process.argv[2] && process.argv[2] !== "--lock-screen")) {
+  throw new Error("Usage: node scripts/smoke-local-agent.mjs [--lock-screen]");
+}
+const lockScreen = process.argv[2] === "--lock-screen";
+const capability = lockScreen ? "os.lock" : "system.info";
 
 const temp = mkdtempSync(join(tmpdir(), "jarvis-agent-smoke-"));
 const configPath = join(temp, "agent.json");
@@ -55,18 +60,18 @@ try {
     display_name: "Local Agent Smoke",
   });
   const device = await api("/v1/devices", "POST", {
-    name: "Smoke device", platform: "windows", capabilities: ["system.info"],
+    name: "Smoke device", platform: "windows", capabilities: [capability],
   }, account.token);
-  const task = await api("/v1/tasks", "POST", { title: "Read device information" }, account.token);
+  const task = await api("/v1/tasks", "POST", { title: lockScreen ? "Lock Windows session" : "Read device information" }, account.token);
   const permission = await api("/v1/permissions", "POST", {
-    task_id: task.id, device_id: device.id, capability: "system.info",
+    task_id: task.id, device_id: device.id, capability,
     resource: `device:${device.id}`, arguments: {},
   }, account.token);
   const grant = await api(`/v1/permissions/${permission.id}/decision`, "POST", {
     decision: "allow_once",
   }, account.token);
   const command = await api("/v1/device-commands", "POST", {
-    task_id: task.id, device_id: device.id, capability: "system.info",
+    task_id: task.id, device_id: device.id, capability,
     resource: `device:${device.id}`, arguments: {},
     permission_request_id: permission.id, nonce: grant.nonce,
     idempotency_key: `agent-smoke-${randomUUID()}`,
@@ -75,12 +80,13 @@ try {
   await agent(["once"]);
   const result = await api(`/v1/device-commands/${command.id}`, "GET", undefined, account.token);
   assert.equal(result.status, "succeeded");
-  assert.equal(JSON.parse(result.output).os, "windows");
+  if (lockScreen) assert.equal(result.output, "Lock initiated");
+  else assert.equal(JSON.parse(result.output).os, "windows");
   const log = readFileSync(join(temp, "agent.log"), "utf8");
   assert.match(log, new RegExp(`Command ${command.id}: succeeded`));
   assert.equal(log.includes(device.device_token), false);
   assert.equal(log.includes(result.output), false);
-  console.log("Local agent end-to-end smoke passed: enrolled, claimed, authorized, executed, and reported.");
+  console.log(`Local agent end-to-end ${capability} smoke passed: enrolled, claimed, authorized, executed, and reported.`);
 } finally {
   try {
     if (existsSync(configPath)) await agent(["unenroll"]);
