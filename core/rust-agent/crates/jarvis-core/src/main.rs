@@ -53,7 +53,9 @@ fn entry(device_id: &str) -> Result<keyring::Entry, String> {
 }
 
 fn load_config() -> Result<AgentConfig, String> {
-    let bytes = fs::read(config_path()?).map_err(|_| "Agent config missing; run enroll first")?;
+    let path = config_path()?;
+    let bytes = fs::read(&path)
+        .map_err(|error| format!("Could not read agent config at {}: {error}", path.display()))?;
     let config: AgentConfig = serde_json::from_slice(&bytes).map_err(|_| "Invalid agent config")?;
     validate_backend_url(&config.backend_url)?;
     Ok(config)
@@ -222,10 +224,21 @@ fn run_once(
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    if matches!(args.get(1).map(String::as_str), Some("once" | "run")) && args.len() == 4 {
+        if args[2] != "--config" || !Path::new(&args[3]).is_absolute() {
+            eprintln!("Usage: jarvis-core <once|run> [--config <absolute-path>]");
+            std::process::exit(1);
+        }
+        env::set_var("JARVIS_AGENT_CONFIG", &args[3]);
+    }
     let result = match args.get(1).map(String::as_str) {
         Some("enroll") => enroll(&args),
         Some("unenroll") => unenroll(),
         Some("once" | "run") => {
+            if args.len() != 2 && args.len() != 4 {
+                eprintln!("Usage: jarvis-core <once|run> [--config <absolute-path>]");
+                std::process::exit(1);
+            }
             let config = load_config();
             config.and_then(|config| {
                 let token = entry(&config.device_id)?
@@ -253,6 +266,7 @@ fn main() {
     };
     if let Err(error) = result {
         eprintln!("{error}");
+        log_event(&error);
         std::process::exit(1);
     }
 }

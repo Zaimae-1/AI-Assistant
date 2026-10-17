@@ -1,9 +1,12 @@
+param(
+  [string]$ConfigPath = (Join-Path $env:APPDATA 'Jarvis\agent.json')
+)
+
 $ErrorActionPreference = 'Stop'
-$configPath = Join-Path $env:APPDATA 'Jarvis\agent.json'
-if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
   throw 'Agent config is missing.'
 }
-$config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+$config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
 if ($config.device_id -notmatch '^[0-9a-fA-F-]{36}$') {
   throw 'Agent config has an invalid device ID.'
 }
